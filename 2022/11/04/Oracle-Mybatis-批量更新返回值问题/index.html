@@ -1,0 +1,188 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#73B9FF"><meta name="author" content="Su"><meta name="copyright" content="Su"><meta name="generator" content="Hexo 6.3.0"><meta name="theme" content="hexo-theme-yun"><title>Oracle &amp; Mybatis 批量更新返回值问题 | Su</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@900&amp;display=swap" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/star-markdown-css@0.4.1/dist/yun/yun-markdown.min.css"><link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/prism-theme-vars/base.css"><script src="https://fastly.jsdelivr.net/npm/scrollreveal/dist/scrollreveal.min.js" defer></script><script>function initScrollReveal() {
+  [".post-card",".markdown-body img"].forEach((target)=> {
+    ScrollReveal().reveal(target);
+  })
+}
+document.addEventListener("DOMContentLoaded", initScrollReveal);
+document.addEventListener("pjax:success", initScrollReveal);
+</script><link rel="icon" type="image/svg+xml" href="/yun.svg"><link rel="mask-icon" href="/yun.svg" color="#73B9FF"><link rel="preload" href="/css/hexo-theme-yun.css" as="style"><link rel="prefetch" href="/js/sidebar.js" as="script"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="preconnect" href="https://fastly.jsdelivr.net/npm/" crossorigin><script id="yun-config">
+    window.Yun = {}
+    window.CONFIG = {"hostname":"674019130.github.io","root":"/","title":["陪","我","去","看","海"],"version":"1.10.9","mode":"auto","copycode":true,"page":{"isPost":true},"i18n":{"placeholder":"搜索...","empty":"找不到您查询的内容: ${query}","hits":"找到 ${hits} 条结果","hits_time":"找到 ${hits} 条结果（用时 ${time} 毫秒）"},"anonymous_image":"https://cdn.yunyoujun.cn/img/avatar/none.jpg","say":{"api":"https://v1.hitokoto.cn","hitokoto":true},"fireworks":{"colors":["102, 167, 221","62, 131, 225","33, 78, 194"]},"waline":{"config":{"enable":true,"serverURL":"https://vercel-waline-c111rx0gg-674019130.vercel.app/","comment":true,"visitor":true,"emoji":["https://fastly.jsdelivr.net/npm/@waline/emojis@latest/bilibili/","https://fastly.jsdelivr.net/npm/@waline/emojis@latest/weibo/","https://fastly.jsdelivr.net/npm/@waline/emojis@latest/qq/"],"locale":{"placeholder":"恭喜你发现了隐藏内容~"},"requiredMeta":["nick"],"el":"#waline","lang":"zh-CN"},"cdn":"https://fastly.jsdelivr.net/npm/@waline/client@v2/dist/waline.js","dark":"html.dark"},"vendors":{"host":"https://fastly.jsdelivr.net/npm/","darken":"https://fastly.jsdelivr.net/npm/darken@1.5.0"}};
+  </script><link rel="stylesheet" href="/css/hexo-theme-yun.css"><script src="/js/hexo-theme-yun.js" type="module"></script><link rel="preconnect" href="https://www.google-analytics.com" crossorigin><script async src="https://www.googletagmanager.com/gtag/js?id=G-HQ8BSZ6WTF"></script><script>if (CONFIG.hostname === location.hostname) {
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-HQ8BSZ6WTF');
+}</script><meta name="description" content="Mybatis 在使用（批量）更新语句的时候，应该在 SQL 语句正常执行完毕后返回「受影响行数」，但在连接的数据库是 Oracle 的时候却一直返回 -1，无法对 SQL 的执行状态进行判断，为了解决这个问题，我做了一些尝试……">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Oracle &amp; Mybatis 批量更新返回值问题">
+<meta property="og:url" content="https://674019130.github.io/2022/11/04/Oracle-Mybatis-%E6%89%B9%E9%87%8F%E6%9B%B4%E6%96%B0%E8%BF%94%E5%9B%9E%E5%80%BC%E9%97%AE%E9%A2%98/index.html">
+<meta property="og:site_name" content="Su">
+<meta property="og:description" content="Mybatis 在使用（批量）更新语句的时候，应该在 SQL 语句正常执行完毕后返回「受影响行数」，但在连接的数据库是 Oracle 的时候却一直返回 -1，无法对 SQL 的执行状态进行判断，为了解决这个问题，我做了一些尝试……">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://tva3.sinaimg.cn/large/008kWByAly8h7swp3ep1wj30j80lp76t.jpg">
+<meta property="article:published_time" content="2022-11-04T01:29:59.000Z">
+<meta property="article:modified_time" content="2023-02-27T08:10:07.887Z">
+<meta property="article:author" content="Su">
+<meta property="article:tag" content="数据库">
+<meta property="article:tag" content="Oracle">
+<meta property="article:tag" content="Mybatis">
+<meta property="article:tag" content="Java">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://tva3.sinaimg.cn/large/008kWByAly8h7swp3ep1wj30j80lp76t.jpg"><script>(function() {
+  if (CONFIG.mode !== 'auto') return
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+  const setting = localStorage.getItem('darken-mode') || 'auto'
+  if (setting === 'dark' || (prefersDark && setting !== 'light'))
+    document.documentElement.classList.toggle('dark', true)
+})()</script></head><body><script src="https://code.iconify.design/2/2.1.1/iconify.min.js"></script><script>// Define global variable
+IconifyProviders = {
+  // Empty prefix: overwrite default API provider configuration
+  '': {
+    // Use custom API first, use Iconify public API as backup
+    resources: [
+        'https://api.iconify.design',
+    ],
+    // Wait for 1 second before switching API hosts
+    rotate: 1000,
+  },
+};</script><script defer src="https://fastly.jsdelivr.net/npm/animejs@latest"></script><script defer src="/js/ui/fireworks.js" type="module"></script><canvas class="fireworks"></canvas><canvas id="trianglifyContainer"></canvas><script defer src="https://fastly.jsdelivr.net/npm/trianglify@4/dist/trianglify.bundle.js"></script><script>document.addEventListener("DOMContentLoaded", () => {
+  const pattern = trianglify({
+    width: 800,
+    height: 600,
+    cellSize: 75,
+    palette: ["YlGnBu", "GnBu", "Blues"],
+  });
+  const canvasOpts = {
+    applyCssScaling: false
+  }
+  document.body.appendChild(pattern.toCanvas(trianglifyContainer, canvasOpts));
+});</script><div class="container"><a class="sidebar-toggle hty-icon-button" id="menu-btn"><div class="hamburger hamburger--spin" type="button"><span class="hamburger-box"><span class="hamburger-inner"></span></span></div></a><div class="sidebar-toggle sidebar-overlay"></div><aside class="sidebar"><script src="/js/sidebar.js" type="module"></script><ul class="sidebar-nav"><li class="sidebar-nav-item sidebar-nav-toc hty-icon-button sidebar-nav-active" data-target="post-toc-wrap" title="文章目录"><span class="icon iconify" data-icon="ri:list-ordered"></span></li><li class="sidebar-nav-item sidebar-nav-overview hty-icon-button" data-target="site-overview-wrap" title="站点概览"><span class="icon iconify" data-icon="ri:passport-line"></span></li></ul><div class="sidebar-panel" id="site-overview-wrap"><div class="site-info mickey-mouse"><a class="site-author-avatar" href="/about/" title="Su"><img width="96" loading="lazy" src="/images/avatar.png" alt="Su"><span class="site-author-status" title="不想上班">💌</span></a><div class="site-author-name"><a href="/about/">Su</a></div><span class="site-name">Su</span><sub class="site-subtitle">Code and Life Notes.</sub><div class="site-description"></div></div><nav class="site-state"><a class="site-state-item hty-icon-button icon-home" href="/" title="首页"><span class="site-state-item-icon"><span class="icon iconify" data-icon="ri:home-4-line"></span></span></a><div class="site-state-item"><a href="/archives/" title="归档"><span class="site-state-item-icon"><span class="icon iconify" data-icon="ri:archive-line"></span></span><span class="site-state-item-count">9</span></a></div><div class="site-state-item"><a href="/categories/" title="分类"><span class="site-state-item-icon"><span class="icon iconify" data-icon="ri:folder-2-line"></span></span><span class="site-state-item-count">10</span></a></div><div class="site-state-item"><a href="/tags/" title="标签"><span class="site-state-item-icon"><span class="icon iconify" data-icon="ri:price-tag-3-line"></span></span><span class="site-state-item-count">12</span></a></div><a class="site-state-item hty-icon-button" target="_blank" rel="noopener" href="https://yun.yunyoujun.cn" title="文档"><span class="site-state-item-icon"><span class="icon iconify" data-icon="ri:settings-line"></span></span></a></nav><hr style="margin-bottom:0.5rem"><div class="links-of-author"><a class="links-of-author-item hty-icon-button" rel="noopener" href="/atom.xml" title="RSS" target="_blank" style="color:orange"><span class="icon iconify" data-icon="ri:rss-line"></span></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="https://github.com/674019130" title="GitHub" target="_blank" style="color:#181717"><span class="icon iconify" data-icon="ri:github-line"></span></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="mailto:ostarsbutmyeyes@gmail.com" title="E-Mail" target="_blank" style="color:#8E71C1"><span class="icon iconify" data-icon="ri:mail-line"></span></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="https://music.163.com/#/user/home?id=247102977" title="网易云音乐" target="_blank" style="color:#C10D0C"><span class="icon iconify" data-icon="ri:netease-cloud-music-line"></span></a></div><hr style="margin:0.5rem 1rem"><div class="links"><a class="links-item hty-icon-button" href="/links/" title="我的小伙伴们" style="color:dodgerblue"><span class="icon iconify" data-icon="ri:genderless-line"></span></a></div><br><a class="links-item hty-icon-button" id="toggle-mode-btn" href="javascript:;" title="Mode" style="color: #f1cb64"><span class="icon iconify" data-icon="ri:contrast-2-line"></span></a></div><div class="sidebar-panel sidebar-panel-active" id="post-toc-wrap"><div class="post-toc"><div class="post-toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%9C%BA%E6%99%AF"><span class="toc-number">1.</span> <span class="toc-text">场景</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E9%97%AE%E9%A2%98"><span class="toc-number">2.</span> <span class="toc-text">问题</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88"><span class="toc-number">3.</span> <span class="toc-text">解决方案</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%90%90%E6%A7%BD"><span class="toc-number">4.</span> <span class="toc-text">吐槽</span></a></li></ol></div></div></div></aside><main class="sidebar-translate" id="content"><div id="post"><article class="hty-card post-block" itemscope itemtype="https://schema.org/Article" style="--smc-primary:#73B9FF;"><link itemprop="mainEntityOfPage" href="https://674019130.github.io/2022/11/04/Oracle-Mybatis-%E6%89%B9%E9%87%8F%E6%9B%B4%E6%96%B0%E8%BF%94%E5%9B%9E%E5%80%BC%E9%97%AE%E9%A2%98/"><span hidden itemprop="author" itemscope itemtype="https://schema.org/Person"><meta itemprop="name" content="Su"><meta itemprop="description"></span><span hidden itemprop="publisher" itemscope itemtype="https://schema.org/Organization"><meta itemprop="name" content="Su"></span><header class="post-header"><h1 class="post-title" itemprop="name headline">Oracle &amp; Mybatis 批量更新返回值问题</h1><div class="post-meta"><div class="post-time" style="display:block"><span class="post-meta-item-icon"><span class="icon iconify" data-icon="ri:calendar-line"></span></span> <time title="创建时间：2022-11-04 09:29:59" itemprop="dateCreated datePublished" datetime="2022-11-04T09:29:59+08:00">2022-11-04</time><span class="post-meta-divider">-</span><span class="post-meta-item-icon"><span class="icon iconify" data-icon="ri:calendar-2-line"></span></span> <time title="修改时间：2023-02-27 16:10:07" itemprop="dateModified" datetime="2023-02-27T16:10:07+08:00">2023-02-27</time></div><span class="post-count"><span class="post-symbolcount"><span class="post-meta-item-icon" title="本文字数"><span class="icon iconify" data-icon="ri:file-word-line"></span></span> <span title="本文字数">1.3k</span><span class="post-meta-divider">-</span><span class="post-meta-item-icon" title="阅读时长"><span class="icon iconify" data-icon="ri:timer-line"></span></span> <span title="阅读时长">5m</span></span></span><span class="post-busuanzi"><span class="post-meta-divider">-</span><span class="post-meta-item-icon" title="阅读次数"><span class="icon iconify" data-icon="ri:eye-line"></span> <span id="busuanzi_value_page_pv"></span></span></span><span class="leancloud_visitors" id="/2022/11/04/Oracle-Mybatis-%E6%89%B9%E9%87%8F%E6%9B%B4%E6%96%B0%E8%BF%94%E5%9B%9E%E5%80%BC%E9%97%AE%E9%A2%98/" data-flag-title="Oracle &amp; Mybatis 批量更新返回值问题"><span class="post-meta-divider">-</span><span class="post-meta-item-icon" title="阅读次数"><span class="icon iconify" data-icon="ri:eye-line"></span> <span class="leancloud-visitors-count"></span></span></span><span class="post-meta-divider">-</span><a href="#comment"><span class="post-meta-item-icon" title="评论数"><span class="icon iconify" data-icon="ri:chat-3-line"></span> <span class="waline-comment-count" id="/2022/11/04/Oracle-Mybatis-%E6%89%B9%E9%87%8F%E6%9B%B4%E6%96%B0%E8%BF%94%E5%9B%9E%E5%80%BC%E9%97%AE%E9%A2%98/"></span></span></a><div class="post-classify"><span class="post-category"> <span class="post-meta-item-icon" style="margin-right:3px;"><span class="icon iconify" data-icon="ri:folder-line"></span></span><span itemprop="about" itemscope itemtype="https://schema.org/Thing"><a class="category-item" href="/categories/%E5%A5%87%E5%A5%87%E6%80%AA%E6%80%AA%E7%9A%84%E9%A1%B9%E7%9B%AE%E9%87%8C%E7%9A%84%E9%97%AE%E9%A2%98/" style="--text-color:var(--hty-text-color)" itemprop="url" rel="index"><span itemprop="text">奇奇怪怪的项目里的问题</span></a></span></span><span class="post-tag"><span class="post-meta-divider">-</span><a class="tag-item" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><span class="icon iconify" data-icon="ri:price-tag-3-line"></span></span><span class="tag-name">数据库</span></a><a class="tag-item" href="/tags/Oracle/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><span class="icon iconify" data-icon="ri:price-tag-3-line"></span></span><span class="tag-name">Oracle</span></a><a class="tag-item" href="/tags/Mybatis/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><span class="icon iconify" data-icon="ri:price-tag-3-line"></span></span><span class="tag-name">Mybatis</span></a><a class="tag-item" href="/tags/Java/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><span class="icon iconify" data-icon="ri:price-tag-3-line"></span></span><span class="tag-name">Java</span></a></span></div><div class="post-author"><span class="author-name">苏</span></div></div></header><section class="post-body" itemprop="articleBody"><div class="post-content markdown-body"><h1 id="场景"><a href="#场景" class="headerlink" title="场景"></a>场景</h1><p>ORM：Mybatis</p>
+<p>数据库：Oracle</p>
+<p>组里新人写的一个接口。</p>
+<p>传给 Mapper 层的是两个元素数量相等的 List，根据某两个字段是否与 List 中的元素匹配，对 status 字段做更新。</p>
+<h1 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h1><p>假如传入 3 条数据，对应数据库中，应该更新三行的 status，如果能够做到全部更新成功，则继续后续业务的执行。但是无论受影响行数是 0 或其他任何非负整数，方法的返回值都是 -1。无法获取受影响行数。</p>
+<h1 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h1><p>这个项目用的是 xml 文件写 mapper，为了实现批量查询，需要在 <code>foreach</code> 标签里添加一些东西。</p>
+<p><code>   &lt;foreach collection=&quot;list&quot; item=&quot;item&quot; index=&quot;index&quot; open=&quot;begin&quot; close=&quot;;end;&quot; separator=&quot;;&quot;&gt;</code></p>
+<p>解决了批量更新的问题，返回值还是 -1，开始查网上的资料。无奈 Mybatis &amp; Oracle 的相关资料非常少，包括外网也是。</p>
+<p>当数据库是 MySQL 的时候，可以通过修改 JDBC 的 URL 参数，添加<code>”affectedRows=true“</code>来实现返回受影响行数的功能（我自己在 MySQL 数据库开发的时候并没有遇到需要额外配置这个参数的情况）。于是我去搜了 Oracle JDBC 的官方文档，官方给出的 URL 参数里并没有效果类似<code>”affectedRows“</code>的，这条路走不通。</p>
+<p>JDBC 连接上走不通，看看能不能从 Mybatis 入手。继续搜别的资料。</p>
+<p>搜到有解释说，返回值是 -1 是由于：</p>
+<blockquote>
+<p>是由于defaultExecutorType的引起的，defaultExecutorType有三个执行器SIMPLE、REUSE和BATCH。其中BATCH可以批量更新操作缓存SQL以提高性能，但是有个缺陷就是无法获取update、delete返回的行数。defaultExecutorType的默认执行器是SIMPLE。</p>
+<table>
+<thead>
+<tr>
+<th>名称</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SIMPLE</td>
+<td>执行器执行其它语句</td>
+</tr>
+<tr>
+<td>REUSE</td>
+<td>可能重复使用prepared statements 语句</td>
+</tr>
+<tr>
+<td>BATCH</td>
+<td>可以重复执行语句和批量更新</td>
+</tr>
+</tbody></table>
+<p>由于项目配置中启用了BATCH执行器，UPDATE和DELETE返回的行数就丢失了，把执行器改为SIMPLE即可。</p>
+</blockquote>
+<p>但是该项目的 Mybatis 配置是这样的：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">mybatis:</span></span><br><span class="line">    <span class="attr">configuration:</span></span><br><span class="line">        <span class="attr">default-executor-type:</span> <span class="string">simple</span></span><br></pre></td></tr></table></figure>
+
+<p>所以这条路也走不通，继续找原因。</p>
+<p>在 StackOverflow 找到有个人说用 BEGIN + END + ; 实现的并不是 「a batch operation」，这里引出了 statement batch 的类型。</p>
+<blockquote>
+<p><img src="https://tva3.sinaimg.cn/large/008kWByAly8h7swp3ep1wj30j80lp76t.jpg" alt="image-20221104103007804" loading="lazy"></p>
+</blockquote>
+<p>但是实际测试的时候发现<code>getUpdateCounts()</code>返回的数组还是都是 -2。</p>
+<p>无奈已经下班一个小时了，只好先用 <code>in</code>代替了<code>where</code>条件中的<code>=</code>，抛弃了批量更新，修改为了一条 SQL 语句。这样可以正常获取返回值。</p>
+<p>第二天早上来了就在查还有没有相关的资料。查到一个人读了更多的 Oracle JDBC 的文档，解决了我的问题。</p>
+<blockquote>
+<p>后来，在 Oracle 的文档说明中，发现的原因：</p>
+<p><a target="_blank" rel="noopener" href="https://docs.oracle.com/cd/E11882_01/java.112/e16548/oraperf.htm#JJDBC28777">https://docs.oracle.com/cd/E11882_01/java.112/e16548/oraperf.htm#JJDBC28777</a></p>
+<p>其中，有一段说明：</p>
+<p>Update Counts in the Oracle Implementation of Standard Batching</p>
+<p>If a statement batch is processed successfully, then the integer array, or update counts array, returned by the statement <code>executeBatch</code> call will always have one element for each operation in the batch. In the Oracle implementation of standard update batching, the values of the array elements are as follows:</p>
+<ul>
+<li>For a prepared statement batch, it is not possible to know the number of rows affected in the database by each individual statement in the batch. Therefore, all array elements have a value of <code>-2</code>. According to the JDBC 2.0 specification, a value of <code>-2</code> indicates that the operation was successful but the number of rows affected is unknown.</li>
+<li>For a generic statement batch, the array contains the actual update counts indicating the number of rows affected by each operation. The actual update counts can be provided only in the case of generic statements in the Oracle implementation of standard batching.</li>
+<li>For a callable statement batch, the server always returns the value <code>1</code> as the update count, irrespective of the number rows affected by each operation.</li>
+</ul>
+<p>In your code, upon successful processing of a batch, you should be prepared to handle either <code>-2</code>, <code>1</code>, or true update counts in the array elements. For a successful batch processing, the array contains either all <code>-2</code>, 1, or all positive integers.</p>
+</blockquote>
+<p>针对三种不同的「statement batch」，Oracle 给出的返回值是不同的，也代表了不同的意义，文档里说的很明白。</p>
+<ul>
+<li><p>parpared statement：-2 表示执行成功，但无法返回实际成功行数；</p>
+</li>
+<li><p>generic statement：返回实际成功行数；</p>
+</li>
+<li><p>callable statement：永远返回 1；</p>
+</li>
+</ul>
+<p>最终的解决方案，抛弃 Mybatis：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="type">int</span> <span class="title function_">updateList</span><span class="params">(List &lt; MyObject &gt; myList)</span> &#123;</span><br><span class="line">    <span class="type">int</span> <span class="variable">size</span> <span class="operator">=</span> myList.size();</span><br><span class="line">    <span class="type">int</span> <span class="variable">batchSize</span> <span class="operator">=</span> <span class="number">100</span>;</span><br><span class="line">    <span class="type">int</span> <span class="variable">index</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">    <span class="type">Long</span> <span class="variable">affectedRows</span> <span class="operator">=</span> <span class="number">0</span> L;</span><br><span class="line"></span><br><span class="line">    <span class="type">SqlSession</span> <span class="variable">sqlSession</span> <span class="operator">=</span> sqlSessionFactory.openSession(ExecutorType.BATCH);</span><br><span class="line">    <span class="type">Connection</span> <span class="variable">conn</span> <span class="operator">=</span> sqlSession.getConnection();</span><br><span class="line">    <span class="type">Statement</span> <span class="variable">statement</span> <span class="operator">=</span> <span class="literal">null</span>;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        statement = conn.createStatement();</span><br><span class="line">        conn.setAutoCommit(<span class="literal">false</span>);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> (MyObject obj: myList) &#123;</span><br><span class="line">            index++;</span><br><span class="line"></span><br><span class="line">            <span class="type">String</span> <span class="variable">sql</span> <span class="operator">=</span> <span class="string">&quot;update tb_test set status = &quot;</span> + obj.getStatus + <span class="string">&quot; where id = &quot;</span> + obj.getId();</span><br><span class="line">            statement.addBatch(sql);</span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span> (index % batchSize == <span class="number">0</span> || index == size) &#123;</span><br><span class="line">                <span class="type">int</span>[] ints = statement.executeBatch();</span><br><span class="line">                affectedRows += IntStream.of(ints).sum();</span><br><span class="line">                statement.clearBatch();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        conn.commit();</span><br><span class="line">        conn.setAutoCommit(<span class="literal">true</span>);</span><br><span class="line"></span><br><span class="line">    &#125; <span class="keyword">catch</span> (SQLException throwables) &#123;</span><br><span class="line">        throwables.printStackTrace();</span><br><span class="line">    &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (statement != <span class="literal">null</span> &amp;&amp; !statement.isClosed()) &#123;</span><br><span class="line">                statement.close();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (SQLException throwables) &#123;</span><br><span class="line">            throwables.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (conn != <span class="literal">null</span> &amp;&amp; !conn.isClosed()) &#123;</span><br><span class="line">                conn.close();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (SQLException throwables) &#123;</span><br><span class="line">            throwables.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> affectedRows.intValue();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="吐槽"><a href="#吐槽" class="headerlink" title="吐槽"></a>吐槽</h1><ul>
+<li><p>Oracle 给我一种很难用的感觉。</p>
+</li>
+<li><p>网络上（尤其是 CSDN &amp; 博客园）的资料基本都是复制来复制去，毫无营养。</p>
+</li>
+<li><p>新人手里那个项目的代码质量一言难尽，主要是注释和魔法数问题。</p>
+</li>
+<li><p>三种 statement 的区分是什么，后面找机会再了解下。（懒狗一条🐶</p>
+</li>
+</ul>
+</div></section><div id="reward-container"><span class="hty-icon-button button-glow" id="reward-button" title="打赏" onclick="var qr = document.getElementById(&quot;qr&quot;); qr.style.display = (qr.style.display === &quot;none&quot;) ? &quot;block&quot; : &quot;none&quot;;"><span class="icon iconify" data-icon="ri:hand-coin-line"></span></span><div id="reward-comment">I'm so cute. Please give me money.</div><div id="qr" style="display:none;"><div style="display:inline-block"><a target="_blank" rel="noopener" href="https://cdn.yunyoujun.cn/img/donate/alipay-qrcode.jpg"><img loading="lazy" src="https://cdn.yunyoujun.cn/img/donate/alipay-qrcode.jpg" alt="支付宝" title="支付宝"></a><div><span style="color:#00A3EE"><span class="icon iconify" data-icon="ri:alipay-line"></span></span></div></div><div style="display:inline-block"><a target="_blank" rel="noopener" href="https://cdn.yunyoujun.cn/img/donate/qqpay-qrcode.png"><img loading="lazy" src="https://cdn.yunyoujun.cn/img/donate/qqpay-qrcode.png" alt="QQ 支付" title="QQ 支付"></a><div><span style="color:#12B7F5"><span class="icon iconify" data-icon="ri:qq-line"></span></span></div></div><div style="display:inline-block"><a target="_blank" rel="noopener" href="https://cdn.yunyoujun.cn/img/donate/wechatpay-qrcode.jpg"><img loading="lazy" src="https://cdn.yunyoujun.cn/img/donate/wechatpay-qrcode.jpg" alt="微信支付" title="微信支付"></a><div><span style="color:#2DC100"><span class="icon iconify" data-icon="ri:wechat-pay-line"></span></span></div></div></div></div><ul class="post-copyright"><li class="post-copyright-author"><strong>本文作者：</strong>苏</li><li class="post-copyright-link"><strong>本文链接：</strong><a href="https://674019130.github.io/2022/11/04/Oracle-Mybatis-%E6%89%B9%E9%87%8F%E6%9B%B4%E6%96%B0%E8%BF%94%E5%9B%9E%E5%80%BC%E9%97%AE%E9%A2%98/" title="Oracle &amp; Mybatis 批量更新返回值问题">https://674019130.github.io/2022/11/04/Oracle-Mybatis-%E6%89%B9%E9%87%8F%E6%9B%B4%E6%96%B0%E8%BF%94%E5%9B%9E%E5%80%BC%E9%97%AE%E9%A2%98/</a></li><li class="post-copyright-license"><strong>版权声明：</strong>本博客所有文章除特别声明外，均默认采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" target="_blank" rel="noopener" title="CC BY-NC-SA 4.0 "><span class="icon iconify" data-icon="ri:creative-commons-line"></span><span class="icon iconify" data-icon="ri:creative-commons-by-line"></span><span class="icon iconify" data-icon="ri:creative-commons-nc-line"></span><span class="icon iconify" data-icon="ri:creative-commons-sa-line"></span></a> 许可协议。</li></ul></article><div class="post-nav"><div class="post-nav-item"><a class="post-nav-prev" href="/2023/01/05/%E5%85%B3%E4%BA%8E%E4%BB%A3%E7%A0%81%E8%A7%84%E8%8C%83%E7%9A%84%E4%B8%80%E4%BA%9B%E7%B2%97%E6%B5%85%E6%83%B3%E6%B3%95/" rel="prev" title="关于代码规范的一些粗浅想法"><span class="icon iconify" data-icon="ri:arrow-left-s-line"></span><span class="post-nav-text">关于代码规范的一些粗浅想法</span></a></div><div class="post-nav-item"><a class="post-nav-next" href="/2022/11/02/LeetCode-SQL-notes/" rel="next" title="LeetCode 数据库刷题笔记"><span class="post-nav-text">LeetCode 数据库刷题笔记</span><span class="icon iconify" data-icon="ri:arrow-right-s-line"></span></a></div></div></div><div class="hty-card" id="comment"><div class="comment-tooltip text-center"><span>若您想及时得到回复提醒，建议跳转 GitHub Issues 评论。</span><br><span>若没有本文 Issue，您可以使用 Comment 模版新建。</span><br><span></span><br><span>😊以下评论系统均需科学上网，作为 GitHub 用户，有理由相信您已经掌握了该技能。</span><br><span>👍若您无 GitHub 账号，推荐使用 waline 作为评论系统，填写邮箱可以收到回复通知~</span><br><a class="hty-button hty-button--raised" id="github-issues" target="_blank" rel="noopener" href="https://github.com/674019130/674019130.github.io/issues?q=is:issue+Oracle &amp; Mybatis 批量更新返回值问题">GitHub Issues</a></div><div class="toggle-comment-system" style="margin: 1rem auto"><a class="toggle-comment-btn hty-button hty-button--raised text-uppercase" data-target="#waline" onclick="showComment(this.dataset.target)">waline</a><style>.utterances {
+  display: none;
+}</style><a class="toggle-comment-btn hty-button hty-button--raised text-uppercase" data-target=".utterances" onclick="showComment(this.dataset.target)">utterances</a><script>function hideAllComment() {
+  //- hide all
+  document.querySelectorAll('.toggle-comment-btn').forEach((btn) => {
+    const container = document.querySelector(btn.dataset.target);
+    if (container) {
+      container.style.display = "none";
+    }
+  });
+}
+function showComment(target) {
+  hideAllComment();
+  //- show target
+  const targetContainer = document.querySelector(target);
+  if (targetContainer) {
+    targetContainer.style.display = "block";
+  }
+}
+</script></div><div id="waline"></div><link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/@waline/client@v2/dist/waline.css"><script>window.CONFIG.waline.config.path = "/2022/11/04/Oracle-Mybatis-%E6%89%B9%E9%87%8F%E6%9B%B4%E6%96%B0%E8%BF%94%E5%9B%9E%E5%80%BC%E9%97%AE%E9%A2%98/"</script><div class="js-Pjax"><script src="/js/comments/waline.js" type="module" defer></script></div><style>.utterances {
+  max-width: 100%;
+}</style><script src="https://utteranc.es/client.js" repo="674019130/674019130.github.io" issue-term="pathname" theme="github-light" crossorigin="anonymous" async></script></div></main><footer class="sidebar-translate" id="footer"><div class="copyright"><span>&copy; 2019 – 2023 </span><span class="with-love" id="animate"><span class="icon iconify" data-icon="ri:cloud-line"></span></span><span class="author"> Su</span></div><div class="powered"><span>由 <a href="https://hexo.io" target="_blank" rel="noopener">Hexo</a> 驱动 v6.3.0</span><span class="footer-separator">|</span><span>主题 - <a rel="noopener" href="https://github.com/YunYouJun/hexo-theme-yun" target="_blank"><span>Yun</span></a> v1.10.9</span></div><div class="live-time"><span>风已经走了</span><span id="display_live_time"></span><span class="moe-text">(●'◡'●)</span><script>function blog_live_time() {
+  setTimeout(blog_live_time, 1000);
+  const start = new Date('2022-10-31T00:00:00');
+  const now = new Date();
+  const timeDiff = (now.getTime() - start.getTime());
+  const msPerMinute = 60 * 1000;
+  const msPerHour = 60 * msPerMinute;
+  const msPerDay = 24 * msPerHour;
+  const passDay = Math.floor(timeDiff / msPerDay);
+  const passHour = Math.floor((timeDiff % msPerDay) / 60 / 60 / 1000);
+  const passMinute = Math.floor((timeDiff % msPerHour) / 60 / 1000);
+  const passSecond = Math.floor((timeDiff % msPerMinute) / 1000);
+  display_live_time.innerHTML = ` ${passDay} 天 ${passHour} 小时 ${passMinute} 分 ${passSecond} 秒`;
+}
+blog_live_time();
+</script></div><div id="busuanzi"><span id="busuanzi_container_site_uv" title="总访客量"><span><span class="icon iconify" data-icon="ri:user-line"></span></span><span id="busuanzi_value_site_uv"></span></span><span class="footer-separator">|</span><span id="busuanzi_container_site_pv" title="总访问量"><span><span class="icon iconify" data-icon="ri:eye-line"></span></span><span id="busuanzi_value_site_pv"></span></span><script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></footer></div><a class="hty-icon-button" id="back-to-top" aria-label="back-to-top" href="#"><span class="icon iconify" data-icon="ri:arrow-up-s-line"></span><svg class="progress-circle-container" viewBox="0 0 100 100"><circle class="progress-circle" id="progressCircle" cx="50" cy="50" r="48" fill="none" stroke="#73B9FF" stroke-width="2" stroke-linecap="round"></circle></svg></a><a class="popup-trigger hty-icon-button icon-search" id="search" target="_blank" rel="noopener" href="https://www.google.com/search?q=site:674019130.github.io" title="搜索"><span class="site-state-item-icon"><span class="icon iconify" data-icon="ri:search-line"></span></span></a><script>function initMourn() {
+  const date = new Date();
+  const today = (date.getMonth() + 1) + "-" + date.getDate()
+  const mourn_days = ["4-4","9-18"]
+  if (mourn_days.includes(today)) {
+    document.documentElement.style.filter = "grayscale(1)";
+  }
+}
+initMourn();</script><script src="https://fastly.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.min.js"></script><script>const images = [...document.querySelectorAll('.markdown-body img')]
+mediumZoom(images)</script><style>.medium-zoom-image {
+  z-index: 99;
+}</style></body></html>

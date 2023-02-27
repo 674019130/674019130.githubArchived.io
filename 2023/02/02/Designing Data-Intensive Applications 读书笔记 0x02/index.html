@@ -1,0 +1,260 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#73B9FF"><meta name="author" content="Su"><meta name="copyright" content="Su"><meta name="generator" content="Hexo 6.3.0"><meta name="theme" content="hexo-theme-yun"><title>《Designing Data-Intensive Applications》 读书笔记 | 0x02 | Su</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@900&amp;display=swap" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/star-markdown-css@0.4.1/dist/yun/yun-markdown.min.css"><link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/prism-theme-vars/base.css"><script src="https://fastly.jsdelivr.net/npm/scrollreveal/dist/scrollreveal.min.js" defer></script><script>function initScrollReveal() {
+  [".post-card",".markdown-body img"].forEach((target)=> {
+    ScrollReveal().reveal(target);
+  })
+}
+document.addEventListener("DOMContentLoaded", initScrollReveal);
+document.addEventListener("pjax:success", initScrollReveal);
+</script><link rel="icon" type="image/svg+xml" href="/yun.svg"><link rel="mask-icon" href="/yun.svg" color="#73B9FF"><link rel="preload" href="/css/hexo-theme-yun.css" as="style"><link rel="prefetch" href="/js/sidebar.js" as="script"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="preconnect" href="https://fastly.jsdelivr.net/npm/" crossorigin><script id="yun-config">
+    window.Yun = {}
+    window.CONFIG = {"hostname":"674019130.github.io","root":"/","title":["陪","我","去","看","海"],"version":"1.10.9","mode":"auto","copycode":true,"page":{"isPost":true},"i18n":{"placeholder":"搜索...","empty":"找不到您查询的内容: ${query}","hits":"找到 ${hits} 条结果","hits_time":"找到 ${hits} 条结果（用时 ${time} 毫秒）"},"anonymous_image":"https://cdn.yunyoujun.cn/img/avatar/none.jpg","say":{"api":"https://v1.hitokoto.cn","hitokoto":true},"fireworks":{"colors":["102, 167, 221","62, 131, 225","33, 78, 194"]},"waline":{"config":{"enable":true,"serverURL":"https://vercel-waline-c111rx0gg-674019130.vercel.app/","comment":true,"visitor":true,"emoji":["https://fastly.jsdelivr.net/npm/@waline/emojis@latest/bilibili/","https://fastly.jsdelivr.net/npm/@waline/emojis@latest/weibo/","https://fastly.jsdelivr.net/npm/@waline/emojis@latest/qq/"],"locale":{"placeholder":"恭喜你发现了隐藏内容~"},"requiredMeta":["nick"],"el":"#waline","lang":"zh-CN"},"cdn":"https://fastly.jsdelivr.net/npm/@waline/client@v2/dist/waline.js","dark":"html.dark"},"vendors":{"host":"https://fastly.jsdelivr.net/npm/","darken":"https://fastly.jsdelivr.net/npm/darken@1.5.0"}};
+  </script><link rel="stylesheet" href="/css/hexo-theme-yun.css"><script src="/js/hexo-theme-yun.js" type="module"></script><link rel="preconnect" href="https://www.google-analytics.com" crossorigin><script async src="https://www.googletagmanager.com/gtag/js?id=G-HQ8BSZ6WTF"></script><script>if (CONFIG.hostname === location.hostname) {
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-HQ8BSZ6WTF');
+}</script><meta name="description" content="现代存储系统的存储与检索使用的数据结构是怎么来的？">
+<meta property="og:type" content="article">
+<meta property="og:title" content="《Designing Data-Intensive Applications》 读书笔记 | 0x02">
+<meta property="og:url" content="https://674019130.github.io/2023/02/02/Designing%20Data-Intensive%20Applications%20%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0%200x02/index.html">
+<meta property="og:site_name" content="Su">
+<meta property="og:description" content="现代存储系统的存储与检索使用的数据结构是怎么来的？">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://1126993343-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F-MHdCOHMs3fNDC20H5qi%2Fuploads%2Fgit-blob-c3a6ae6f68ea1206d8620d623958aabf9b93becd%2Ffig3-2.png?alt=media">
+<meta property="og:image" content="https://1126993343-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F-MHdCOHMs3fNDC20H5qi%2Fuploads%2Fgit-blob-99ab40d51ee679cb35bd46f8378776d832deff07%2Ffig3-6.png?alt=media">
+<meta property="og:image" content="https://1126993343-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F-MHdCOHMs3fNDC20H5qi%2Fuploads%2Fgit-blob-acecd9e64499e2541269ebc48f1579b1c6ac2acc%2Ffig3-8.png?alt=media">
+<meta property="article:published_time" content="2023-02-02T02:46:51.000Z">
+<meta property="article:modified_time" content="2023-02-27T08:10:07.886Z">
+<meta property="article:author" content="Su">
+<meta property="article:tag" content="DDIA">
+<meta property="article:tag" content="System Design">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://1126993343-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F-MHdCOHMs3fNDC20H5qi%2Fuploads%2Fgit-blob-c3a6ae6f68ea1206d8620d623958aabf9b93becd%2Ffig3-2.png?alt=media"><script>(function() {
+  if (CONFIG.mode !== 'auto') return
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+  const setting = localStorage.getItem('darken-mode') || 'auto'
+  if (setting === 'dark' || (prefersDark && setting !== 'light'))
+    document.documentElement.classList.toggle('dark', true)
+})()</script></head><body><script src="https://code.iconify.design/2/2.1.1/iconify.min.js"></script><script>// Define global variable
+IconifyProviders = {
+  // Empty prefix: overwrite default API provider configuration
+  '': {
+    // Use custom API first, use Iconify public API as backup
+    resources: [
+        'https://api.iconify.design',
+    ],
+    // Wait for 1 second before switching API hosts
+    rotate: 1000,
+  },
+};</script><script defer src="https://fastly.jsdelivr.net/npm/animejs@latest"></script><script defer src="/js/ui/fireworks.js" type="module"></script><canvas class="fireworks"></canvas><canvas id="trianglifyContainer"></canvas><script defer src="https://fastly.jsdelivr.net/npm/trianglify@4/dist/trianglify.bundle.js"></script><script>document.addEventListener("DOMContentLoaded", () => {
+  const pattern = trianglify({
+    width: 800,
+    height: 600,
+    cellSize: 75,
+    palette: ["YlGnBu", "GnBu", "Blues"],
+  });
+  const canvasOpts = {
+    applyCssScaling: false
+  }
+  document.body.appendChild(pattern.toCanvas(trianglifyContainer, canvasOpts));
+});</script><div class="container"><a class="sidebar-toggle hty-icon-button" id="menu-btn"><div class="hamburger hamburger--spin" type="button"><span class="hamburger-box"><span class="hamburger-inner"></span></span></div></a><div class="sidebar-toggle sidebar-overlay"></div><aside class="sidebar"><script src="/js/sidebar.js" type="module"></script><ul class="sidebar-nav"><li class="sidebar-nav-item sidebar-nav-toc hty-icon-button sidebar-nav-active" data-target="post-toc-wrap" title="文章目录"><span class="icon iconify" data-icon="ri:list-ordered"></span></li><li class="sidebar-nav-item sidebar-nav-overview hty-icon-button" data-target="site-overview-wrap" title="站点概览"><span class="icon iconify" data-icon="ri:passport-line"></span></li></ul><div class="sidebar-panel" id="site-overview-wrap"><div class="site-info mickey-mouse"><a class="site-author-avatar" href="/about/" title="Su"><img width="96" loading="lazy" src="/images/avatar.png" alt="Su"><span class="site-author-status" title="不想上班">💌</span></a><div class="site-author-name"><a href="/about/">Su</a></div><span class="site-name">Su</span><sub class="site-subtitle">Code and Life Notes.</sub><div class="site-description"></div></div><nav class="site-state"><a class="site-state-item hty-icon-button icon-home" href="/" title="首页"><span class="site-state-item-icon"><span class="icon iconify" data-icon="ri:home-4-line"></span></span></a><div class="site-state-item"><a href="/archives/" title="归档"><span class="site-state-item-icon"><span class="icon iconify" data-icon="ri:archive-line"></span></span><span class="site-state-item-count">9</span></a></div><div class="site-state-item"><a href="/categories/" title="分类"><span class="site-state-item-icon"><span class="icon iconify" data-icon="ri:folder-2-line"></span></span><span class="site-state-item-count">10</span></a></div><div class="site-state-item"><a href="/tags/" title="标签"><span class="site-state-item-icon"><span class="icon iconify" data-icon="ri:price-tag-3-line"></span></span><span class="site-state-item-count">12</span></a></div><a class="site-state-item hty-icon-button" target="_blank" rel="noopener" href="https://yun.yunyoujun.cn" title="文档"><span class="site-state-item-icon"><span class="icon iconify" data-icon="ri:settings-line"></span></span></a></nav><hr style="margin-bottom:0.5rem"><div class="links-of-author"><a class="links-of-author-item hty-icon-button" rel="noopener" href="/atom.xml" title="RSS" target="_blank" style="color:orange"><span class="icon iconify" data-icon="ri:rss-line"></span></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="https://github.com/674019130" title="GitHub" target="_blank" style="color:#181717"><span class="icon iconify" data-icon="ri:github-line"></span></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="mailto:ostarsbutmyeyes@gmail.com" title="E-Mail" target="_blank" style="color:#8E71C1"><span class="icon iconify" data-icon="ri:mail-line"></span></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="https://music.163.com/#/user/home?id=247102977" title="网易云音乐" target="_blank" style="color:#C10D0C"><span class="icon iconify" data-icon="ri:netease-cloud-music-line"></span></a></div><hr style="margin:0.5rem 1rem"><div class="links"><a class="links-item hty-icon-button" href="/links/" title="我的小伙伴们" style="color:dodgerblue"><span class="icon iconify" data-icon="ri:genderless-line"></span></a></div><br><a class="links-item hty-icon-button" id="toggle-mode-btn" href="javascript:;" title="Mode" style="color: #f1cb64"><span class="icon iconify" data-icon="ri:contrast-2-line"></span></a></div><div class="sidebar-panel sidebar-panel-active" id="post-toc-wrap"><div class="post-toc"><div class="post-toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%AC%AC%E4%B8%89%E7%AB%A0%EF%BC%9A%E5%AD%98%E5%82%A8%E4%B8%8E%E6%A3%80%E7%B4%A2"><span class="toc-number">1.</span> <span class="toc-text">第三章：存储与检索</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9E%84%E5%BB%BA%E5%92%8C%E7%BB%B4%E6%8A%A4SSTables"><span class="toc-number">1.0.0.1.</span> <span class="toc-text">构建和维护SSTables</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#B%E6%A0%91"><span class="toc-number">1.0.1.</span> <span class="toc-text">B树</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%AE%A9B%E6%A0%91%E6%9B%B4%E5%8F%AF%E9%9D%A0"><span class="toc-number">1.0.1.1.</span> <span class="toc-text">让B树更可靠</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#LSM%E6%A0%91%E7%9A%84%E7%BC%BA%E7%82%B9"><span class="toc-number">1.0.1.2.</span> <span class="toc-text">LSM树的缺点</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E4%BB%93%E5%BA%93"><span class="toc-number">1.0.2.</span> <span class="toc-text">数据仓库</span></a></li></ol></li></ol></li></ol></div></div></div></aside><main class="sidebar-translate" id="content"><div id="post"><article class="hty-card post-block" itemscope itemtype="https://schema.org/Article" style="--smc-primary:#73B9FF;"><link itemprop="mainEntityOfPage" href="https://674019130.github.io/2023/02/02/Designing%20Data-Intensive%20Applications%20%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0%200x02/"><span hidden itemprop="author" itemscope itemtype="https://schema.org/Person"><meta itemprop="name" content="Su"><meta itemprop="description"></span><span hidden itemprop="publisher" itemscope itemtype="https://schema.org/Organization"><meta itemprop="name" content="Su"></span><header class="post-header"><h1 class="post-title" itemprop="name headline">《Designing Data-Intensive Applications》 读书笔记 | 0x02</h1><div class="post-meta"><div class="post-time" style="display:block"><span class="post-meta-item-icon"><span class="icon iconify" data-icon="ri:calendar-line"></span></span> <time title="创建时间：2023-02-02 10:46:51" itemprop="dateCreated datePublished" datetime="2023-02-02T10:46:51+08:00">2023-02-02</time><span class="post-meta-divider">-</span><span class="post-meta-item-icon"><span class="icon iconify" data-icon="ri:calendar-2-line"></span></span> <time title="修改时间：2023-02-27 16:10:07" itemprop="dateModified" datetime="2023-02-27T16:10:07+08:00">2023-02-27</time></div><span class="post-count"><span class="post-symbolcount"><span class="post-meta-item-icon" title="本文字数"><span class="icon iconify" data-icon="ri:file-word-line"></span></span> <span title="本文字数">5.7k</span><span class="post-meta-divider">-</span><span class="post-meta-item-icon" title="阅读时长"><span class="icon iconify" data-icon="ri:timer-line"></span></span> <span title="阅读时长">19m</span></span></span><span class="post-busuanzi"><span class="post-meta-divider">-</span><span class="post-meta-item-icon" title="阅读次数"><span class="icon iconify" data-icon="ri:eye-line"></span> <span id="busuanzi_value_page_pv"></span></span></span><span class="leancloud_visitors" id="/2023/02/02/Designing%20Data-Intensive%20Applications%20%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0%200x02/" data-flag-title="《Designing Data-Intensive Applications》 读书笔记 | 0x02"><span class="post-meta-divider">-</span><span class="post-meta-item-icon" title="阅读次数"><span class="icon iconify" data-icon="ri:eye-line"></span> <span class="leancloud-visitors-count"></span></span></span><span class="post-meta-divider">-</span><a href="#comment"><span class="post-meta-item-icon" title="评论数"><span class="icon iconify" data-icon="ri:chat-3-line"></span> <span class="waline-comment-count" id="/2023/02/02/Designing%20Data-Intensive%20Applications%20%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0%200x02/"></span></span></a><div class="post-classify"><span class="post-category"> <span class="post-meta-item-icon" style="margin-right:3px;"><span class="icon iconify" data-icon="ri:folder-line"></span></span><span itemprop="about" itemscope itemtype="https://schema.org/Thing"><a class="category-item" href="/categories/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/" style="--text-color:var(--hty-text-color)" itemprop="url" rel="index"><span itemprop="text">读书笔记</span></a></span> > <span itemprop="about" itemscope itemtype="https://schema.org/Thing"><a class="category-item" href="/categories/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/DDIA/" style="--text-color:var(--hty-text-color)" itemprop="url" rel="index"><span itemprop="text">DDIA</span></a></span></span><span class="post-tag"><span class="post-meta-divider">-</span><a class="tag-item" href="/tags/DDIA/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><span class="icon iconify" data-icon="ri:price-tag-3-line"></span></span><span class="tag-name">DDIA</span></a><a class="tag-item" href="/tags/System-Design/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><span class="icon iconify" data-icon="ri:price-tag-3-line"></span></span><span class="tag-name">System Design</span></a></span></div><div class="post-author"><span class="author-name">苏</span></div></div></header><section class="post-body" itemprop="articleBody"><div class="post-content markdown-body"><h1 id="第三章：存储与检索"><a href="#第三章：存储与检索" class="headerlink" title="第三章：存储与检索"></a>第三章：存储与检索</h1><blockquote>
+<p>为了高效查找数据库中特定键的值，我们需要一个数据结构：<strong>索引（index）</strong>。本章将介绍一系列的索引结构，并在它们之间进行比较。索引背后的大致思想是通过保存一些额外的元数据作为路标来帮助你找到想要的数据。如果你想以几种不同的方式搜索同一份数据，那么你也许需要在数据的不同部分上建立多个索引。</p>
+</blockquote>
+<p>没有废话，提到了 <strong>元数据</strong> 这个概念，可以在后面多思考一下，<strong>索引</strong> 里为什么一定要加这些元数据，这些元数据是怎样让搜索加速的。</p>
+<hr>
+<blockquote>
+<p>让我们从 <strong>键值数据（key-value Data）</strong> 的索引开始。这不是你可以索引的唯一数据类型，但键值数据是很常见的。在引入更复杂的索引之前，它是重要的第一步。</p>
+<p>键值存储与在大多数编程语言中可以找到的 <strong>字典（dictionary）</strong> 类型非常相似，通常字典都是用 <strong>散列映射（hash map）</strong> 或 <strong>散列表（hash table）</strong> 实现的。散列映射在许多算法教科书中都有描述【1,2】，所以这里我们不会讨论它的工作细节。既然我们已经可以用散列映射来表示 <strong>内存中</strong> 的数据结构，为什么不使用它来索引 <strong>硬盘上</strong> 的数据呢？</p>
+</blockquote>
+<p>内存上的散列索引，是不是可以理解为应用里类似 <code>HashMap&lt;K, V&gt;</code>的变量。之所以能表示内存中的数据结构，是因为编程语言为程序封装了寻址、调用等操作。</p>
+<p>而作者既然提到了也可以用来索引 <strong>硬盘上</strong> 的数据，那么必然也要实现相应的操作。</p>
+<hr>
+<blockquote>
+<p>像 Bitcask 这样的存储引擎非常适合每个键的值经常更新的情况。例如，键可能是某个猫咪视频的网址（URL），而值可能是该视频被播放的次数（每次有人点击播放按钮时递增）。在这种类型的工作负载中，有很多写操作，但是没有太多不同的键 —— 每个键有很多的写操作，但是将所有键保存在内存中是可行的。</p>
+<p>到目前为止，我们只是在追加写入一个文件 —— 所以如何避免最终用完硬盘空间？一种好的解决方案是，将日志分为特定大小的 <strong>段（segment）</strong>，当日志增长到特定尺寸时关闭当前段文件，并开始写入一个新的段文件。然后，我们就可以对这些段进行 <strong>压缩（compaction）</strong>，如 <a target="_blank" rel="noopener" href="https://github.com/Vonng/ddia/blob/master/img/fig3-2.png">图 3-2</a> 所示。这里的压缩意味着在日志中丢弃重复的键，只保留每个键的最近更新。</p>
+<p><img src="https://1126993343-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F-MHdCOHMs3fNDC20H5qi%2Fuploads%2Fgit-blob-c3a6ae6f68ea1206d8620d623958aabf9b93becd%2Ffig3-2.png?alt=media" alt="img" loading="lazy"></p>
+<p><strong>图 3-2 键值更新日志（统计猫咪视频的播放次数）的压缩，只保留每个键的最近值</strong></p>
+<p>而且，由于压缩经常会使得段变得很小（假设在一个段内键被平均重写了好几次），我们也可以在执行压缩的同时将多个段合并在一起，如 <a target="_blank" rel="noopener" href="https://github.com/Vonng/ddia/blob/master/img/fig3-3.png">图 3-3</a> 所示。段被写入后永远不会被修改，所以合并的段被写入一个新的文件。冻结段的合并和压缩可以在后台线程中完成，这个过程进行的同时，我们仍然可以继续使用旧的段文件来正常提供读写请求。合并过程完成后，我们将读取请求转换为使用新合并的段而不是旧的段 —— 然后旧的段文件就可以简单地删除掉了。</p>
+</blockquote>
+<p>不难看出这是一种非常好的处理思路。通过「压缩」这种方式处理旧数据，维护有限占用空间里的一份最新数据。这里可以想到多线程处理，主线程负责数据的更新，即写操作；其他线程将之前生成的「日志」文件读取并压缩，并视情况做其他处理。</p>
+<p>BTW，作者在后面提到了一些实现过程中的细节，越来越像 Redis 等缓存系统了。</p>
+<hr>
+<blockquote>
+<p>但是，散列表索引也有其局限性：</p>
+<ul>
+<li>散列表必须能放进内存。如果你有非常多的键，那真是倒霉。原则上可以在硬盘上维护一个散列映射，不幸的是硬盘散列映射很难表现优秀。它需要大量的随机访问 I&#x2F;O，而后者耗尽时想要再扩充是很昂贵的，并且需要很烦琐的逻辑去解决散列冲突【5】。</li>
+<li>范围查询效率不高。例如，你无法轻松扫描 kitty00000 和 kitty99999 之间的所有键 —— 你必须在散列映射中单独查找每个键。</li>
+</ul>
+</blockquote>
+<p>我刚刚提到的硬盘上做散列映射的想法，应该是由于 IO 效率问题很难被实际应用。</p>
+<p>不知道 SSD 上的表现会不会好一些。</p>
+<hr>
+<blockquote>
+<p>现在我们可以对段文件的格式做一个简单的改变：要求键值对的序列按键排序。乍一看，这个要求似乎打破了我们使用顺序写入的能力，我们将稍后再回到这个问题。</p>
+<p>我们把这个格式称为 <strong>排序字符串表（Sorted String Table）</strong>，简称 SSTable。我们还要求每个键只在每个合并的段文件中出现一次（压缩过程已经保证）。与使用散列索引的日志段相比，SSTable 有几个大的优势：</p>
+</blockquote>
+<p>篇幅限制不引用具体优势了。这让我有了一些思考：</p>
+<ol>
+<li>索引结构是不是最好是基于 <strong>已排序</strong> 数据上的，或者索引结构本身包含 <strong>已排序</strong> 这个特性。</li>
+<li>基于 <strong>已排序</strong> 这个特性，二分查找似乎已经是效率最高的，普适性最强的查找算法了。树这种数据结构就很适合使用二分查找。作者循循善诱，给出了现代数据系统技术选型的来龙去脉。</li>
+</ol>
+<hr>
+<blockquote>
+<h4 id="构建和维护SSTables"><a href="#构建和维护SSTables" class="headerlink" title="构建和维护SSTables"></a>构建和维护SSTables</h4><p>到目前为止还不错，但是如何让你的数据能够预先排好序呢？毕竟我们接收到的写入请求可能以任何顺序发生。</p>
+<p>虽然在硬盘上维护有序结构也是可能的（请参阅 “<a href="">B 树</a>”），但在内存保存则要容易得多。有许多可以使用的众所周知的树形数据结构，例如红黑树或 AVL 树【2】。使用这些数据结构，你可以按任何顺序插入键，并按排序顺序读取它们。</p>
+</blockquote>
+<p>这里可以看出来，其实树这种数据结构，在应用的时候除了本身的特性，还要参考 IO 速率。在硬盘和内存上是两种差距很大的应用场景。</p>
+<hr>
+<blockquote>
+<p>Lucene，是一种全文搜索的索引引擎，在 Elasticsearch 和 Solr 被使用，它使用类似的方法来存储它的关键词词典【12,13】。全文索引比键值索引复杂得多，但是基于类似的想法：在搜索查询中，由一个给定的单词，找到提及单词的所有文档（网页，产品描述等）。这也是通过键值结构实现的：其中键是 <strong>单词（term）</strong>，值是所有包含该单词的文档的 ID 列表（<strong>postings list</strong>）。在 Lucene 中，从词语到记录列表的这种映射保存在类似于 SSTable 的有序文件中，并根据需要在后台执行合并【14】。</p>
+</blockquote>
+<p>提到了 Elasticsearch，后面学习的时候可以注意一下啊。</p>
+<p>以 <strong>单词</strong> 为键，用大量空间（但是使用压缩和树结构进行优化）换取时间。当把其中一项做到极致，比如特别快或者占用磁盘空间特别小时，也是一种成功。或者这时候应用范围会更广——相比于特点中庸的应用。</p>
+<hr>
+<blockquote>
+<h3 id="B树"><a href="#B树" class="headerlink" title="B树"></a>B树</h3><p>前面讨论的日志结构索引看起来已经相当可用了，但它们却不是最常见的索引类型。使用最广泛的索引结构和日志结构索引相当不同，它就是我们接下来要讨论的 B 树。</p>
+<p>从 1970 年被引入【17】，仅不到 10 年后就变得 “无处不在”【18】，B 树很好地经受了时间的考验。在几乎所有的关系数据库中，它们仍然是标准的索引实现，许多非关系数据库也会使用到 B 树。</p>
+<p>像 SSTables 一样，B 树保持按键排序的键值对，这允许高效的键值查找和范围查询。但这也就是仅有的相似之处了：B 树有着非常不同的设计理念。</p>
+</blockquote>
+<p>终于到 B 树了！这里提到 B 树的设计理念与上文提到的 <strong>日志结构索引</strong> 不同。先独立思考一下。</p>
+<p>B 树也是有序的树形结构，每一层都存储数据，有序且进行了分区。一直维护最新的数据。</p>
+<hr>
+<blockquote>
+<p>我们前面看到的日志结构索引将数据库分解为可变大小的段，通常是几兆字节或更大的大小，并且总是按顺序写入段。相比之下，B 树将数据库分解成固定大小的 <strong>块（block）</strong> 或 <strong>分页（page）</strong>，传统上大小为 4KB（有时会更大），并且一次只能读取或写入一个页面。这种设计更接近于底层硬件，因为硬盘空间也是按固定大小的块来组织的。</p>
+<p>每个页面都可以使用地址或位置来标识，这允许一个页面引用另一个页面 —— 类似于指针，但在硬盘而不是在内存中。我们可以使用这些页面引用来构建一个页面树，如 <a target="_blank" rel="noopener" href="https://github.com/Vonng/ddia/blob/master/img/fig3-6.png">图 3-6</a> 所示。</p>
+<p><img src="https://1126993343-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F-MHdCOHMs3fNDC20H5qi%2Fuploads%2Fgit-blob-99ab40d51ee679cb35bd46f8378776d832deff07%2Ffig3-6.png?alt=media" alt="img" loading="lazy"></p>
+</blockquote>
+<p>果然自己思考没有想到重点，作者想说的重点是， B 树使用了 <strong>更接近底层硬件的设计</strong>，使用固定大小的块（block）或者分页（page）来组织数据。</p>
+<p>BTW，在上文中曾经提过在保存数据时是保存 <strong>副本</strong> 还是 <strong>引用</strong>，在「时间」这个指标相对来说更为重要的阶段，通常都会使用大量的「空间」，而保存 <strong>副本</strong> 所占用的「空间」是不可估量的，保存引用可能是唯一可行的出路。</p>
+<hr>
+<blockquote>
+<p>在 B 树的一个页面中对子页面的引用的数量称为 <strong>分支因子（branching factor）</strong>。例如，在 <a target="_blank" rel="noopener" href="https://github.com/Vonng/ddia/blob/master/img/fig3-6.png">图 3-6</a> 中，分支因子是 6。在实践中，分支因子的大小取决于存储页面引用和范围边界所需的空间，但这个值通常是几百。</p>
+</blockquote>
+<p><strong>分支因子</strong> 的数量级也显示出 B 树在应对大数据量时依然游刃有余，容量很大。</p>
+<p>与之相对的，B 树的 <strong>层高</strong> 应该不会很大。</p>
+<hr>
+<blockquote>
+<p><strong>图 3-7 通过分割页面来生长 B 树</strong></p>
+<p>[^ii]: 向 B 树中插入一个新的键是相当符合直觉的，但删除一个键（同时保持树平衡）就会牵扯很多其他东西了【2】。</p>
+<p>这个算法可以确保树保持平衡：具有 n 个键的 B 树总是具有 $O (log n)$ 的深度。大多数数据库可以放入一个三到四层的 B 树，所以你不需要追踪多个页面引用来找到你正在查找的页面（分支因子为 500 的 4KB 页面的四层树可以存储多达 256TB 的数据）。</p>
+</blockquote>
+<p>为什么要设计成「矮胖」形式而不是「瘦高」形式呢？我想，这里面还是跟「B 树使用更接近底层硬件的设计」有关，载入一页（一层）之后，在页内进行检索无需进行 IO 操作，时空间开销更小。</p>
+<p>同时 $O (log n)$ 的复杂度使每一层的 <strong>分支因子</strong> 数量级可以稍微大一些。</p>
+<hr>
+<blockquote>
+<h4 id="让B树更可靠"><a href="#让B树更可靠" class="headerlink" title="让B树更可靠"></a>让B树更可靠</h4><p>B 树的基本底层写操作是用新数据覆写硬盘上的页面，并假定覆写不改变页面的位置：即，当页面被覆写时，对该页面的所有引用保持完整。这与日志结构索引（如 LSM 树）形成鲜明对比，后者只追加到文件（并最终删除过时的文件），但从不修改文件中已有的内容。</p>
+<p>你可以把覆写硬盘上的页面对应为实际的硬件操作。在磁性硬盘驱动器上，这意味着将磁头移动到正确的位置，等待旋转盘上的正确位置出现，然后用新的数据覆写适当的扇区。在固态硬盘上，由于 SSD 必须一次擦除和重写相当大的存储芯片块，所以会发生更复杂的事情【19】。</p>
+<p>而且，一些操作需要覆写几个不同的页面。例如，如果因为插入导致页面过满而拆分页面，则需要写入新拆分的两个页面，并覆写其父页面以更新对两个子页面的引用。这是一个危险的操作，因为如果数据库在系列操作进行到一半时崩溃，那么最终将导致一个损坏的索引（例如，可能有一个孤儿页面没有被任何页面引用） 。</p>
+<p>为了使数据库能处理异常崩溃的场景，B 树实现通常会带有一个额外的硬盘数据结构：<strong>预写式日志</strong>（WAL，即 write-ahead log，也称为 <strong>重做日志</strong>，即 redo log）。这是一个仅追加的文件，每个 B 树的修改在其能被应用到树本身的页面之前都必须先写入到该文件。当数据库在崩溃后恢复时，这个日志将被用来使 B 树恢复到一致的状态【5,20】。</p>
+</blockquote>
+<p>内容有点多，简而言之。</p>
+<ol>
+<li>B 树的查找效率可能很高，但是在面对插入删除操作时显得有些力不从心。不但有风险，开销还不小。</li>
+<li><strong>redo log</strong> 是附着在 B 树这种数据结构上的一种额外的硬盘数据结构，使用追加的方式写入对 B 树的修改语句。用以应对数据库异常崩溃时数据丢失或索引损坏的情况。</li>
+</ol>
+<p>看到这里，感慨颇多。</p>
+<p>以前对于知识的态度是——欣赏能讲得出来龙去脉深入浅出的，也很爱直接把知识摆在桌子上自己啃的。但是现在看来，循循善诱的讲法还是更胜一筹。这可能也是习惯于填鸭式教育的一种觉醒吧。</p>
+<hr>
+<blockquote>
+<p>由于反复压缩和合并 SSTables，日志结构索引也会多次重写数据。这种影响 —— 在数据库的生命周期中每笔数据导致对硬盘的多次写入 —— 被称为 <strong>写入放大（write amplification）</strong>。使用固态硬盘的机器需要额外关注这点，固态硬盘的闪存寿命在覆写有限次数后就会耗尽。</p>
+</blockquote>
+<p>作者会频繁提到有关硬件的细节，应该重视起来。</p>
+<hr>
+<blockquote>
+<p>在许多固态硬盘上，固件内部使用了日志结构化算法，以将随机写入转变为顺序写入底层存储芯片，因此存储引擎写入模式的影响不太明显【19】。但是，较低的写入放大率和减少的碎片仍然对固态硬盘更有利：更紧凑地表示数据允许在可用的 I&#x2F;O 带宽内处理更多的读取和写入请求。</p>
+</blockquote>
+<p>note.</p>
+<hr>
+<blockquote>
+<h4 id="LSM树的缺点"><a href="#LSM树的缺点" class="headerlink" title="LSM树的缺点"></a>LSM树的缺点</h4><p>日志结构存储的缺点是压缩过程有时会干扰正在进行的读写操作。尽管存储引擎尝试增量地执行压缩以尽量不影响并发访问，但是硬盘资源有限，所以很容易发生某个请求需要等待硬盘先完成昂贵的压缩操作。对吞吐量和平均响应时间的影响通常很小，但是日志结构化存储引擎在更高百分位的响应时间（请参阅 “<a href="">描述性能</a>”）有时会相当长，而 B 树的行为则相对更具有可预测性【28】。</p>
+<p>压缩的另一个问题出现在高写入吞吐量时：硬盘的有限写入带宽需要在初始写入（记录日志和刷新内存表到硬盘）和在后台运行的压缩线程之间共享。写入空数据库时，可以使用全硬盘带宽进行初始写入，但数据库越大，压缩所需的硬盘带宽就越多。</p>
+<p>如果写入吞吐量很高，并且压缩没有仔细配置好，有可能导致压缩跟不上写入速率。在这种情况下，硬盘上未合并段的数量不断增加，直到硬盘空间用完，读取速度也会减慢，因为它们需要检查更多的段文件。通常情况下，即使压缩无法跟上，基于 SSTable 的存储引擎也不会限制传入写入的速率，所以你需要进行明确的监控来检测这种情况【29,30】。</p>
+</blockquote>
+<p>LSM 树的效率随着使用时间的增长和数据量的增加而下降。需要提供一个监测指标来防止这种情况的发生和恶化。</p>
+<hr>
+<blockquote>
+<p>反直觉的是，内存数据库的性能优势并不是因为它们不需要从硬盘读取的事实。只要有足够的内存即使是基于硬盘的存储引擎也可能永远不需要从硬盘读取，因为操作系统在内存中缓存了最近使用的硬盘块。相反，它们更快的原因在于省去了将内存数据结构编码为硬盘数据结构的开销【44】。</p>
+</blockquote>
+<p>note：Redis 相对于硬盘上的数据系统为什么快？</p>
+<hr>
+<blockquote>
+<p>术语 <strong>交易 &#x2F; 事务（transaction）</strong> 仍留了下来，用于指代一组读写操作构成的逻辑单元。</p>
+</blockquote>
+<p>note。</p>
+<hr>
+<blockquote>
+<h3 id="数据仓库"><a href="#数据仓库" class="headerlink" title="数据仓库"></a>数据仓库</h3><p>一个企业可能有几十个不同的交易处理系统：面向终端客户的网站，控制实体商店的收银系统，仓库库存跟踪，车辆路线规划，供应链管理，员工管理等。这些系统中每一个都很复杂，需要专人维护，所以最终这些系统互相之间都是独立运行的。</p>
+<p>这些 OLTP 系统往往对业务运作至关重要，因而通常会要求 <strong>高可用</strong> 与 <strong>低延迟</strong>。所以 DBA 会密切关注他们的 OLTP 数据库，他们通常不愿意让业务分析人员在 OLTP 数据库上运行临时的分析查询，因为这些查询通常开销巨大，会扫描大部分数据集，这会损害同时在执行的事务的性能。</p>
+</blockquote>
+<p>除去 SQL 语句本身的复杂性，在大规模的数据集上进行操作时，可能简单的 SQL 也会带来巨大的性能开销。</p>
+<hr>
+<blockquote>
+<p>相比之下，数据仓库是一个独立的数据库，分析人员可以查询他们想要的内容而不影响 OLTP 操作【48】。数据仓库包含公司各种 OLTP 系统中所有的只读数据副本。从 OLTP 数据库中提取数据（使用定期的数据转储或连续的更新流），转换成适合分析的模式，清理并加载到数据仓库中。将数据存入仓库的过程称为 “<strong>抽取 - 转换 - 加载（ETL）</strong>”，如 <a target="_blank" rel="noopener" href="https://github.com/Vonng/ddia/blob/master/img/fig3-8.png">图 3-8</a> 所示。</p>
+<p><img src="https://1126993343-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F-MHdCOHMs3fNDC20H5qi%2Fuploads%2Fgit-blob-acecd9e64499e2541269ebc48f1579b1c6ac2acc%2Ffig3-8.png?alt=media" alt="img" loading="lazy"></p>
+</blockquote>
+<p>ETL 好像是现在大数据提到的概念来着。之前在微软的时候也看到了 spark 和 Kafka 这种用以处理大规模数据的系统。</p>
+<hr>
+<blockquote>
+<p>对这个想法，有一个巧妙的扩展被 C-Store 发现，并在商业数据仓库 Vertica 中被采用【61,62】：既然不同的查询受益于不同的排序顺序，为什么不以几种不同的方式来存储相同的数据呢？反正数据都需要做备份，以防单点故障时丢失数据。因此你可以用不同排序方式来存储冗余数据，以便在处理查询时，调用最适合查询模式的版本。n</p>
+</blockquote>
+<p>note，涨知识。</p>
+<hr>
+<blockquote>
+<p>关于 OLTP，我们最后还介绍了一些更复杂的索引结构，以及针对所有数据都放在内存里而优化的数据库。</p>
+<p>然后，我们暂时放下了存储引擎的内部细节，查看了典型数据仓库的高级架构，并说明了为什么分析工作负载与 OLTP 差别很大：当你的查询需要在大量行中顺序扫描时，索引的重要性就会降低很多。相反，非常紧凑地编码数据变得非常重要，以最大限度地减少查询需要从硬盘读取的数据量。我们讨论了列式存储如何帮助实现这一目标。</p>
+<p>作为一名应用程序开发人员，如果你掌握了有关存储引擎内部的知识，那么你就能更好地了解哪种工具最适合你的特定应用程序。当你调整数据库的优化参数时，这种理解让你能够设想增减某个值会产生怎样的效果。</p>
+<p>尽管本章不能让你成为一个特定存储引擎的调参专家，但它至少大概率使你有了足够的概念与词汇储备去读懂你所选择的数据库的文档。</p>
+</blockquote>
+<p>第三章内容很多，但是大部分都是在介绍时下流行的一些数据系统，包括大型的公司是怎么处理海量数据的，做了哪些优化，深层次的原因是什么样的。</p>
+<p>还介绍了索引和实现索引使用的各种数据结构，包括 B 树和 B 树的变种（我们常常说的 InnoDB 使用的 B+ 树），讲了这些数据结构的来龙去脉。</p>
+<p>开拓了视野，也能为阅读文档打下基础。</p>
+<p>也让我在讨论相关内容的时候有话可说，有根据可判断。</p>
+<p>BTW，第四章稍微搁置一下，准备回归学习一下具体的应用。</p>
+</div></section><div id="reward-container"><span class="hty-icon-button button-glow" id="reward-button" title="打赏" onclick="var qr = document.getElementById(&quot;qr&quot;); qr.style.display = (qr.style.display === &quot;none&quot;) ? &quot;block&quot; : &quot;none&quot;;"><span class="icon iconify" data-icon="ri:hand-coin-line"></span></span><div id="reward-comment">I'm so cute. Please give me money.</div><div id="qr" style="display:none;"><div style="display:inline-block"><a target="_blank" rel="noopener" href="https://cdn.yunyoujun.cn/img/donate/alipay-qrcode.jpg"><img loading="lazy" src="https://cdn.yunyoujun.cn/img/donate/alipay-qrcode.jpg" alt="支付宝" title="支付宝"></a><div><span style="color:#00A3EE"><span class="icon iconify" data-icon="ri:alipay-line"></span></span></div></div><div style="display:inline-block"><a target="_blank" rel="noopener" href="https://cdn.yunyoujun.cn/img/donate/qqpay-qrcode.png"><img loading="lazy" src="https://cdn.yunyoujun.cn/img/donate/qqpay-qrcode.png" alt="QQ 支付" title="QQ 支付"></a><div><span style="color:#12B7F5"><span class="icon iconify" data-icon="ri:qq-line"></span></span></div></div><div style="display:inline-block"><a target="_blank" rel="noopener" href="https://cdn.yunyoujun.cn/img/donate/wechatpay-qrcode.jpg"><img loading="lazy" src="https://cdn.yunyoujun.cn/img/donate/wechatpay-qrcode.jpg" alt="微信支付" title="微信支付"></a><div><span style="color:#2DC100"><span class="icon iconify" data-icon="ri:wechat-pay-line"></span></span></div></div></div></div><ul class="post-copyright"><li class="post-copyright-author"><strong>本文作者：</strong>苏</li><li class="post-copyright-link"><strong>本文链接：</strong><a href="https://674019130.github.io/2023/02/02/Designing%20Data-Intensive%20Applications%20%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0%200x02/" title="《Designing Data-Intensive Applications》 读书笔记 | 0x02">https://674019130.github.io/2023/02/02/Designing%20Data-Intensive%20Applications%20%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0%200x02/</a></li><li class="post-copyright-license"><strong>版权声明：</strong>本博客所有文章除特别声明外，均默认采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" target="_blank" rel="noopener" title="CC BY-NC-SA 4.0 "><span class="icon iconify" data-icon="ri:creative-commons-line"></span><span class="icon iconify" data-icon="ri:creative-commons-by-line"></span><span class="icon iconify" data-icon="ri:creative-commons-nc-line"></span><span class="icon iconify" data-icon="ri:creative-commons-sa-line"></span></a> 许可协议。</li></ul></article><div class="post-nav"><div class="post-nav-item"><a class="post-nav-prev" href="/2023/02/06/%E5%B8%B8%E7%94%A8%E4%BB%A3%E7%A0%81%E7%89%87%E6%AE%B5/" rel="prev" title="常用代码片段"><span class="icon iconify" data-icon="ri:arrow-left-s-line"></span><span class="post-nav-text">常用代码片段</span></a></div><div class="post-nav-item"><a class="post-nav-next" href="/2023/02/01/Designing%20Data-Intensive%20Applications%20%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0%200x01/" rel="next" title="《Designing Data-Intensive Applications》 读书笔记 | 0x01"><span class="post-nav-text">《Designing Data-Intensive Applications》 读书笔记 | 0x01</span><span class="icon iconify" data-icon="ri:arrow-right-s-line"></span></a></div></div></div><div class="hty-card" id="comment"><div class="comment-tooltip text-center"><span>若您想及时得到回复提醒，建议跳转 GitHub Issues 评论。</span><br><span>若没有本文 Issue，您可以使用 Comment 模版新建。</span><br><span></span><br><span>😊以下评论系统均需科学上网，作为 GitHub 用户，有理由相信您已经掌握了该技能。</span><br><span>👍若您无 GitHub 账号，推荐使用 waline 作为评论系统，填写邮箱可以收到回复通知~</span><br><a class="hty-button hty-button--raised" id="github-issues" target="_blank" rel="noopener" href="https://github.com/674019130/674019130.github.io/issues?q=is:issue+《Designing Data-Intensive Applications》 读书笔记 | 0x02">GitHub Issues</a></div><div class="toggle-comment-system" style="margin: 1rem auto"><a class="toggle-comment-btn hty-button hty-button--raised text-uppercase" data-target="#waline" onclick="showComment(this.dataset.target)">waline</a><style>.utterances {
+  display: none;
+}</style><a class="toggle-comment-btn hty-button hty-button--raised text-uppercase" data-target=".utterances" onclick="showComment(this.dataset.target)">utterances</a><script>function hideAllComment() {
+  //- hide all
+  document.querySelectorAll('.toggle-comment-btn').forEach((btn) => {
+    const container = document.querySelector(btn.dataset.target);
+    if (container) {
+      container.style.display = "none";
+    }
+  });
+}
+function showComment(target) {
+  hideAllComment();
+  //- show target
+  const targetContainer = document.querySelector(target);
+  if (targetContainer) {
+    targetContainer.style.display = "block";
+  }
+}
+</script></div><div id="waline"></div><link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/@waline/client@v2/dist/waline.css"><script>window.CONFIG.waline.config.path = "/2023/02/02/Designing%20Data-Intensive%20Applications%20%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0%200x02/"</script><div class="js-Pjax"><script src="/js/comments/waline.js" type="module" defer></script></div><style>.utterances {
+  max-width: 100%;
+}</style><script src="https://utteranc.es/client.js" repo="674019130/674019130.github.io" issue-term="pathname" theme="github-light" crossorigin="anonymous" async></script></div></main><footer class="sidebar-translate" id="footer"><div class="copyright"><span>&copy; 2019 – 2023 </span><span class="with-love" id="animate"><span class="icon iconify" data-icon="ri:cloud-line"></span></span><span class="author"> Su</span></div><div class="powered"><span>由 <a href="https://hexo.io" target="_blank" rel="noopener">Hexo</a> 驱动 v6.3.0</span><span class="footer-separator">|</span><span>主题 - <a rel="noopener" href="https://github.com/YunYouJun/hexo-theme-yun" target="_blank"><span>Yun</span></a> v1.10.9</span></div><div class="live-time"><span>风已经走了</span><span id="display_live_time"></span><span class="moe-text">(●'◡'●)</span><script>function blog_live_time() {
+  setTimeout(blog_live_time, 1000);
+  const start = new Date('2022-10-31T00:00:00');
+  const now = new Date();
+  const timeDiff = (now.getTime() - start.getTime());
+  const msPerMinute = 60 * 1000;
+  const msPerHour = 60 * msPerMinute;
+  const msPerDay = 24 * msPerHour;
+  const passDay = Math.floor(timeDiff / msPerDay);
+  const passHour = Math.floor((timeDiff % msPerDay) / 60 / 60 / 1000);
+  const passMinute = Math.floor((timeDiff % msPerHour) / 60 / 1000);
+  const passSecond = Math.floor((timeDiff % msPerMinute) / 1000);
+  display_live_time.innerHTML = ` ${passDay} 天 ${passHour} 小时 ${passMinute} 分 ${passSecond} 秒`;
+}
+blog_live_time();
+</script></div><div id="busuanzi"><span id="busuanzi_container_site_uv" title="总访客量"><span><span class="icon iconify" data-icon="ri:user-line"></span></span><span id="busuanzi_value_site_uv"></span></span><span class="footer-separator">|</span><span id="busuanzi_container_site_pv" title="总访问量"><span><span class="icon iconify" data-icon="ri:eye-line"></span></span><span id="busuanzi_value_site_pv"></span></span><script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></footer></div><a class="hty-icon-button" id="back-to-top" aria-label="back-to-top" href="#"><span class="icon iconify" data-icon="ri:arrow-up-s-line"></span><svg class="progress-circle-container" viewBox="0 0 100 100"><circle class="progress-circle" id="progressCircle" cx="50" cy="50" r="48" fill="none" stroke="#73B9FF" stroke-width="2" stroke-linecap="round"></circle></svg></a><a class="popup-trigger hty-icon-button icon-search" id="search" target="_blank" rel="noopener" href="https://www.google.com/search?q=site:674019130.github.io" title="搜索"><span class="site-state-item-icon"><span class="icon iconify" data-icon="ri:search-line"></span></span></a><script>function initMourn() {
+  const date = new Date();
+  const today = (date.getMonth() + 1) + "-" + date.getDate()
+  const mourn_days = ["4-4","9-18"]
+  if (mourn_days.includes(today)) {
+    document.documentElement.style.filter = "grayscale(1)";
+  }
+}
+initMourn();</script><script src="https://fastly.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.min.js"></script><script>const images = [...document.querySelectorAll('.markdown-body img')]
+mediumZoom(images)</script><style>.medium-zoom-image {
+  z-index: 99;
+}</style></body></html>
